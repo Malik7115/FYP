@@ -1,65 +1,82 @@
 import cv2
 import numpy as np
-import imutils
-from numpy import int
+
 
 def nothing(x):
     pass 
 
+
 cap = cv2.VideoCapture(1)
-balls = cv2.imread('connect.png',0)
-orig = cv2.imread('connect.png',1)
 
+cv2.namedWindow('sliders')
+cv2.createTrackbar('LH','sliders',150,255,nothing)
 
+check = 0
 
-################
-_,thresh = cv2.threshold(balls,0,255,cv2.THRESH_BINARY_INV)
-cv2.namedWindow('res',cv2.WINDOW_AUTOSIZE)
-
-
-connectivity = 8  
-# Perform the operation
-output = cv2.connectedComponentsWithStats(thresh, connectivity, cv2.CV_32S)
-# Get the results
-# The first cell is the number of labels
-num_labels = output[0]
-# The second cell is the label matrix
-labels = output[1]
-# The third cell is the stat matrix
-stats = output[2]
-# The fourth cell is the centroid matrix
-centroids = output[3]
-print((labels.shape))
-cv2.imshow('res',thresh)
-
-# cv2.rectangle(balls,\
-#               (int(c[0,0]-w/2),int(c[0,1]-h/2)),\
-#               (int(c[0,0]+w/2),int(c[0,1]-h/2)),\
-#               (255,0,0),2)
-    
-for i in np.unique(labels):
-    w = stats[i,cv2.CC_STAT_WIDTH]
-    h = stats[i,cv2.CC_STAT_HEIGHT]
-    c = centroids[i,:]
-    
-    sx = int(centroids[i,0] - w/2)
-    sy = int(centroids[i,1] - h/2)
-    ex = int(centroids[i,0] + w/2)
-    ey = int(centroids[i,1] + h/2)
-    
-    print('ss')
-    print(sx,sy,ex,ey)
-    print(w,h)
+while(1):
+    ret,frame = cap.read()
+    LH = cv2.getTrackbarPos('LH','sliders')
+    b,g,r = cv2.split(frame)
+    _,r = cv2.threshold(r,253,255,cv2.THRESH_BINARY)
     
     
-    cv2.rectangle(orig,(sx,sy),(ex,ey),(255,0,0),2)
+    connectivity = 8  
+    # Perform the operation
+    output = cv2.connectedComponentsWithStats(r, connectivity, cv2.CV_32S)
+    # Get the results
+    # The first cell is the number of labels
+    num_labels = output[0]
+    # The second cell is the label matrix
+    labels = output[1]
+    # The third cell is the stat matrix
+    stats = output[2]
+    # The fourth cell is the centroid matrix
+    centroids = output[3]
     
-cv2.imshow('orig',orig)
+    largest_area = stats[1,cv2.CC_STAT_AREA]
+    largest_label = 0
+    loop = np.unique(labels)
+    
+    #############################CCl part
+    largest_area = 0
 
-# cv2.rectangle(balls,(centroids[]),) 
-print(centroids.shape)
-print(centroids[0,:])
+    mask = np.zeros_like(r)   
 
-cv2.waitKey(0)
+    for i in loop[1:]:
+        
+        area = stats[i,cv2.CC_STAT_AREA]
+        if area > largest_area:
+            largest_area = area;
+            largest_label = i;
+            
+        mask[labels == largest_label] = i
+            
+        
+        
+    _,mask = cv2.threshold(mask,largest_label,255,cv2.THRESH_BINARY)
+    r = cv2.bitwise_and(r,r,mask = mask)        
+    w = stats[largest_label,cv2.CC_STAT_WIDTH]
+    h = stats[largest_label,cv2.CC_STAT_HEIGHT]
+    c = centroids[largest_label,:]
+    sx = int(centroids[largest_label,0] - w/2)
+    sy = int(centroids[largest_label,1] - h/2)
+    ex = int(centroids[largest_label,0] + w/2)
+    ey = int(centroids[largest_label,1] + h/2)
+    cv2.rectangle(frame,(sx,sy),(ex,ey),(255,255,0),2)
+
+    
+    
+    
+    
+    cv2.imshow('red',r)
+    cv2.imshow('res',frame)
+    
+    
+    
+    k = cv2.waitKey(5) & 0xFF
+    if k == 27:
+        break
+
 cv2.destroyAllWindows()
-
+    
+    
