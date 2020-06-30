@@ -1,0 +1,76 @@
+a = -7;
+
+b = 1/80;
+
+
+A = [0 1;
+     0 a];
+ 
+B = [0;
+     b];
+ 
+C = [1 0];
+
+ 
+%K = acker(A, B, [-5 -5])
+ 
+%H = acker(A', C', [-5 -5])'
+
+T = 1/30;
+l = 4;
+
+% Controller Design
+%
+sys_disc = c2d(sys_cont, T);
+Ad = sys_disc.A;
+Bd = sys_disc.B;
+Cd = sys_disc.C;
+
+sys_cont = ss(A, B, C, 0);
+
+
+%Observer Design
+% Delayed System
+% Disturbance 
+Aobs = [ A, B;
+     zeros(1, 3)];
+ 
+Bobs = [B;
+     0];
+ 
+Cobs = [C, 0];
+
+sys_cont = ss(A, B, C, 0);
+sys_cont = ss(Aobs, Bobs, Cobs, 0);
+
+[n,m] = size(Ad);
+
+if(l > 0)
+    Ad = [Ad,       Bd, zeros(n, l-1)];
+    
+    for i=1:l-1
+        row_i = zeros(1, n+l);
+        row_i(n+1+i) = 1;
+        Ad = [Ad;
+            row_i];
+    end
+    
+    Ad = [Ad;
+        zeros(1, n+l)];
+    
+    Bd = [zeros(n+l-1, 1);
+        1];
+    
+    Cd = [Cd, zeros(1,l)];
+else
+    Cd = Cd;
+end
+%Kd = acker(Ad, Bd, exp([-5 -5]*T))
+%Kd = acker(Ad, Bd, 0.7 * ones(1, n+l))
+%Hd = acker(Ad', C', exp([-10 -10]*T))'
+Hd = acker(Ad', Cd', 0.36 * ones(1, n+l))'
+
+create_drone_control_file
+
+
+
